@@ -262,6 +262,35 @@ async function cenarioExigirStatus() {
 }
 
 /* ------------------------------------------------------------------ */
+async function cenarioCadencia() {
+  console.log('\nEXTRA — o intervalo configurado realmente muda a velocidade (grade que não muta)');
+  const medidos = {};
+  for (const intervalo of [500, 1500]) {
+    const app = criarApp({
+      pedidos: [P(262614, 'Móvel', 'CANCELADO')],   // fila sem código maior: só atualiza
+      gradeEstatica: true
+    });
+    // tempo limite de validação no padrão de produção: não pode influenciar a cadência
+    await iniciar(app, { refreshInterval: intervalo, validationTimeout: 8000 });
+    await ate(() => app.atualizacoes.length >= 6, 40000, 'ciclos de atualização com ' + intervalo + 'ms');
+
+    const periodos = [];
+    for (let i = 2; i < app.atualizacoes.length; i++) periodos.push(app.atualizacoes[i] - app.atualizacoes[i - 1]);
+    periodos.sort((a, b) => a - b);
+    const mediana = periodos[Math.floor(periodos.length / 2)];
+    medidos[intervalo] = mediana;
+
+    ok(mediana >= intervalo * 0.85 && mediana <= intervalo * 1.45,
+      'intervalo ' + intervalo + 'ms → cadência medida ' + mediana + 'ms',
+      'períodos=' + periodos.join(','));
+    encerrar(app);
+  }
+  ok(medidos[1500] > medidos[500] * 2,
+    'cadência de 1500ms é proporcionalmente mais lenta que a de 500ms',
+    JSON.stringify(medidos));
+}
+
+/* ------------------------------------------------------------------ */
 async function cenarioParar() {
   console.log('\nEXTRA — parar a automação interrompe o fluxo');
   const app = criarApp({ pedidos: [P(262614, 'Móvel', 'AGUARDANDO VALIDAÇÃO BKO')] });
@@ -286,6 +315,7 @@ async function cenarioParar() {
     await cenarioIcones();
     await cenarioNavegacao();
     await cenarioExigirStatus();
+    await cenarioCadencia();
     await cenarioParar();
   } catch (e) {
     falhas++;

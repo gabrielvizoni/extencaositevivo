@@ -662,6 +662,15 @@
     return mudou;
   }
 
+  /**
+   * Teto de espera pela grade depois de reaplicar o filtro.
+   * Fica amarrado ao intervalo configurado (nunca ao tempo limite de validação),
+   * para que a cadência de atualização seja realmente a que o usuário escolheu.
+   */
+  function limiteEstabilizacao() {
+    return Math.max(150, Math.min(CONFIG.refreshInterval || 0, 1000));
+  }
+
   /** Observa a grade e resolve quando o conteúdo realmente mudar. */
   function observarGrade(timeout) {
     const ctx = encontrarTabela();
@@ -670,7 +679,7 @@
       let mudou = false;
       let obs = null;
       let timerDebounce = null;
-      const limite = setTimeout(() => finalizar(mudou), timeout != null ? timeout : Math.max(1200, CONFIG.validationTimeout / 2));
+      const limite = setTimeout(() => finalizar(mudou), timeout != null ? timeout : limiteEstabilizacao());
 
       function finalizar(resultado) {
         if (obs) obs.disconnect();
@@ -682,7 +691,7 @@
         obs = new MutationObserver(() => {
           mudou = true;
           if (timerDebounce) clearTimeout(timerDebounce);
-          timerDebounce = setTimeout(() => finalizar(true), 120);
+          timerDebounce = setTimeout(() => finalizar(true), 60);
         });
         obs.observe(raiz, { childList: true, subtree: true, characterData: true });
       } catch (e) { finalizar(false); }
@@ -838,40 +847,44 @@
       await aguardarIntervalo();
       if (!rodando) return false;
 
+      // o intervalo é medido entre INÍCIOS de atualização
+      ultimaAtualizacao = Date.now();
+      const inicio = ultimaAtualizacao;
+
       const select = encontrarFiltroTipo();
+      const opcaoSolta = select ? null : encontrarOpcaoMovelClicavel();
       let disparou = false;
+
+      // observador criado ANTES das ações: uma única espera por ciclo
+      const promessaGrade = observarGrade();
 
       if (select) {
         const mudou = selecionarSomenteMovel(select);
-        log('Atualizando filtro Móvel' + (motivo ? ' (' + motivo + ')' : '') + (mudou ? ' — seleção ajustada' : ' — reaplicando seleção'));
-        const promessaGrade = observarGrade();
+        log('Atualizando filtro Móvel' + (motivo ? ' (' + motivo + ')' : '') +
+            (mudou ? ' — seleção ajustada' : ' — reaplicando seleção'));
         dispararMudanca(select);
         if (estrategiaAtualizacao >= 1) {
           const opcao = opcaoMovelDoSelect(select);
           if (opcao) clicarComEventos(opcao);
         }
         disparou = true;
-        const houveMudanca = await promessaGrade;
-        semMudancaNaGrade = houveMudanca ? 0 : semMudancaNaGrade + 1;
+      } else if (opcaoSolta) {
+        log('Atualizando filtro Móvel (elemento clicável)' + (motivo ? ' — ' + motivo : ''));
+        clicar(opcaoSolta);
+        disparou = true;
       } else {
-        const opcao = encontrarOpcaoMovelClicavel();
-        if (opcao) {
-          log('Atualizando filtro Móvel (elemento clicável)' + (motivo ? ' — ' + motivo : ''));
-          const promessaGrade = observarGrade();
-          clicar(opcao);
-          disparou = true;
-          const houveMudanca = await promessaGrade;
-          semMudancaNaGrade = houveMudanca ? 0 : semMudancaNaGrade + 1;
-        } else {
-          aviso('Filtro TIPO não encontrado — tentando botão de busca da grade');
-        }
+        aviso('Filtro TIPO não encontrado — usando ação de reforço da grade');
       }
 
-      if (!disparou || semMudancaNaGrade >= 3) {
-        await estrategiaAlternativa();
-      }
+      // reforço no MESMO ciclo (não cria uma segunda espera)
+      if (!disparou || semMudancaNaGrade >= 3) acaoDeReforco();
 
-      ultimaAtualizacao = Date.now();
+      const houveMudanca = await promessaGrade;
+      semMudancaNaGrade = houveMudanca ? 0 : semMudancaNaGrade + 1;
+
+      log('Fila atualizada em ' + (Date.now() - inicio) + ' ms — mudança na grade: ' +
+          (houveMudanca ? 'sim' : 'não detectada') +
+          ' | intervalo mínimo configurado: ' + CONFIG.refreshInterval + ' ms');
       return true;
     } finally {
       atualizandoFila = false;
@@ -886,8 +899,8 @@
     return null;
   }
 
-  /** Escalonamento: só é usado quando a re-aplicação do filtro não surte efeito. */
-  async function estrategiaAlternativa() {
+  /** Reforço: só é usado quando a reaplicação do filtro não surte efeito. */
+  function acaoDeReforco() {
     estrategiaAtualizacao = Math.min(estrategiaAtualizacao + 1, 3);
     semMudancaNaGrade = 0;
 
@@ -895,19 +908,16 @@
       '[ng-click*="buscar"], [ng-click*="pesquisar"], [ng-click*="filtrar"], [ng-click*="atualizar"], [ng-click*="listar"], [ng-click*="carregar"]'
     );
     if (botaoBusca && visivel(botaoBusca)) {
-      log('Estratégia alternativa: acionando botão de busca/atualização da grade');
-      const promessa = observarGrade();
+      log('Reforço: acionando botão de busca/atualização da grade');
       clicar(botaoBusca);
-      await promessa;
       return;
     }
 
     const ctx = encontrarTabela();
     const campoFiltro = ctx ? ctx.tabela.querySelector('thead input[type="text"], thead input:not([type])') : null;
     if (campoFiltro) {
-      log('Estratégia alternativa (último recurso): confirmando o filtro com Enter');
-      const promessa = observarGrade();
-      campoFiltro.focus && campoFiltro.focus();
+      log('Reforço (último recurso): confirmando o filtro com Enter');
+      if (campoFiltro.focus) campoFiltro.focus();
       ['keydown', 'keypress', 'keyup'].forEach((tipo) => {
         try {
           campoFiltro.dispatchEvent(new KeyboardEvent(tipo, {
@@ -915,7 +925,6 @@
           }));
         } catch (e) {}
       });
-      await promessa;
     }
   }
 

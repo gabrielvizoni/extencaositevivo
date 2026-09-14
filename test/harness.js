@@ -302,7 +302,14 @@ function criarApp(opcoes) {
   function atualizarFilaSimulada() {
     app.atualizacoes.push(Date.now());
     if (typeof op.aoAtualizar === 'function') op.aoAtualizar(app);
-    if (rotaAtual().tipo === 'LISTA') renderLista();
+    if (rotaAtual().tipo !== 'LISTA') return;
+
+    // Com "gradeEstatica" o sistema devolve exatamente as mesmas linhas e o
+    // AngularJS reaproveita o DOM (track by): NENHUMA mutação é gerada.
+    const assinatura = pedidosVisiveis().map((p) => p.codigo + ':' + p.tipo + ':' + (p.statusFila != null ? p.statusFila : p.status)).join('|');
+    if (op.gradeEstatica && assinatura === app.ultimaAssinatura) return;
+    app.ultimaAssinatura = assinatura;
+    renderLista();
   }
 
   function rotaAtual() {

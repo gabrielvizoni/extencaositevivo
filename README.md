@@ -27,6 +27,14 @@ Em ordem de prioridade:
 | Tempo limite de validação (ms) | `8000` | Espera máxima pelo status e pelos botões antes de abortar o pedido (nunca transforma no timeout). |
 | Exigir status definido | desligado | Ligado, bloqueia pedidos cujo status atual esteja "Não informado". |
 
+O intervalo é medido **entre inícios de atualização**, e a espera pela grade
+nunca ultrapassa esse valor. Para conferir no console:
+
+```
+[INFO2B] Fila atualizada em 84 ms — mudança na grade: sim | intervalo mínimo configurado: 500 ms
+[INFO2B] Aguardando 416 ms antes da próxima atualização (intervalo configurado: 500 ms)
+```
+
 O bloco **Progresso da fila** mostra o estado atual, o último código processado
 ou bloqueado e os totais. **Zerar progresso da fila** faz a extensão voltar a
 considerar códigos antigos (use quando o marcador ficar alto demais).
