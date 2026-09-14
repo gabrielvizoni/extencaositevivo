@@ -1,0 +1,12 @@
+{
+  "name": "automacao-info2b-movel",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Testes do motor de automação da extensão Info2B (setor Móvel)",
+  "scripts": {
+    "test": "node test/scenarios.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

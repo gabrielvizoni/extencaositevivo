@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "Automação Pasta Azul Pro",
+  "version": "2.0",
+  "description": "Automação de pré-pedidos MÓVEL no Info2B: valida linha e status, nunca transforma CANCELADO e avança a fila pelo número do Info.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs",
+    "webNavigation",
+    "notifications",
+    "alarms"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Controle de Automação"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://app.info2b.com.br/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*",
+        "content.js",
+        "popup.html",
+        "popup.js"
+      ],
+      "matches": [
+        "*://app.info2b.com.br/*"
+      ]
+    }
+  ],
+  "host_permissions": [
+    "*://app.info2b.com.br/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "*://app.info2b.com.br/*"
+    ]
+  }
+}

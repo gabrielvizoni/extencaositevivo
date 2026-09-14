@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automate</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <img src="icons/icon48.png" alt="Logo">
+        <h1>Automate</h1>
+      </div>
+      <div class="status" id="status-badge">Desativado</div>
+    </div>
+
+    <div class="buttons">
+      <button id="start-btn" class="btn primary">Iniciar Automação</button>
+      <button id="stop-btn" class="btn secondary">Parar Automação</button>
+    </div>
+
+    <div class="config">
+      <h2>Configurações</h2>
+      <div class="form-group">
+        <label for="refresh-interval">Intervalo de atualização (ms):</label>
+        <input type="number" id="refresh-interval" value="1000" min="200" max="60000" step="100">
+        <small class="hint">Intervalo mínimo entre atualizações da fila. Menor = mais rápido, maior = menos carga no Info2B.</small>
+      </div>
+      <div class="form-group">
+        <label for="validation-timeout">Tempo limite de validação (ms):</label>
+        <input type="number" id="validation-timeout" value="8000" min="1000" max="60000" step="500">
+        <small class="hint">Espera máxima pelo status e pelos botões antes de abortar o pedido.</small>
+      </div>
+      <div class="form-group form-check">
+        <label for="require-status">
+          <input type="checkbox" id="require-status">
+          Exigir status definido
+        </label>
+        <small class="hint">Bloqueia pedidos cujo status atual esteja "Não informado".</small>
+      </div>
+      <button id="save-settings" class="btn primary">Salvar Configurações</button>
+    </div>
+
+    <div class="config progress">
+      <h2>Progresso da fila</h2>
+      <div class="linha"><span>Estado:</span><strong id="estado-atual">—</strong></div>
+      <div class="linha"><span>Último código:</span><strong id="ultimo-codigo">—</strong></div>
+      <div class="linha"><span>Transformados:</span><strong id="total-transformados">0</strong></div>
+      <div class="linha"><span>Bloqueados:</span><strong id="total-bloqueados">0</strong></div>
+      <button id="reset-progress" class="btn ghost">Zerar progresso da fila</button>
+    </div>
+
+    <div class="footer">
+      <span>By -&gt; [Japa - Drop]</span>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
