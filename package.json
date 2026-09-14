@@ -4,7 +4,9 @@
   "private": true,
   "description": "Testes do motor de automação da extensão Info2B (setor Móvel)",
   "scripts": {
-    "test": "node test/scenarios.js"
+    "test": "node test/scenarios.js && node test/popup.test.js",
+    "test:fluxo": "node test/scenarios.js",
+    "test:popup": "node test/popup.test.js"
   },
   "devDependencies": {
     "jsdom": "^24.0.0"

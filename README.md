@@ -35,9 +35,20 @@ nunca ultrapassa esse valor. Para conferir no console:
 [INFO2B] Aguardando 416 ms antes da próxima atualização (intervalo configurado: 500 ms)
 ```
 
+As configurações são gravadas em `chrome.storage.local` (sem cota) e espelhadas
+em `sync`. Um valor inválido no campo **não** é trocado pelo padrão em silêncio:
+o painel recusa, avisa e devolve o último valor salvo. Depois de salvar, o botão
+confirma o que ficou gravado ("Salvo: 500 ms").
+
 O bloco **Progresso da fila** mostra o estado atual, o último código processado
 ou bloqueado e os totais. **Zerar progresso da fila** faz a extensão voltar a
 considerar códigos antigos (use quando o marcador ficar alto demais).
+
+Para conferir se o intervalo pegou, olhe no mesmo bloco:
+
+* **Intervalo em uso** — o valor que o content script está aplicando agora. Se
+  for diferente do campo, a configuração não chegou até a página.
+* **Cadência medida** — o tempo real entre as duas últimas atualizações da fila.
 
 ## Fluxo (máquina de estados)
 
@@ -72,11 +83,16 @@ Os 7 cenários obrigatórios rodam contra um simulador do DOM do Info2B (jsdom):
 
 ```bash
 npm install
-npm test
+npm test            # fluxo da automação + painel
+npm run test:fluxo  # só os cenários da automação
+npm run test:popup  # só o painel
 ```
 
 Cobertura: CANCELADO na fila e no acompanhamento, tipos diferentes de Móvel,
 ordem e ausência de duplicidade, fila sem código maior, CANCELADO em outra
 linha, status lento, botão disponível antes da validação, os quatro formatos de
 ícone da linha, navegação após confirmar, "Exigir status definido" e parada
-imediata da automação.
+imediata da automação. Há ainda um caso que mede a **cadência real** com a grade
+que não sofre mutação (o cenário em que o intervalo configurado era ignorado) e
+os testes do painel, que cobrem a gravação do intervalo, valor inválido, leitura
+lenta do storage e falha do `storage.sync`.

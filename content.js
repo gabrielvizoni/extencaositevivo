@@ -91,6 +91,7 @@
   let atualizandoFila = false;    // trava: nunca duas atualizações simultâneas
   let navegando = false;          // trava: nunca duas navegações simultâneas
   let esperasSemCodigo = 0;       // ciclos sem nenhum código maior disponível
+  let periodoMedido = null;       // tempo real entre as duas últimas atualizações
   let estrategiaAtualizacao = 0;  // estratégia de refresh em uso
   let semMudancaNaGrade = 0;      // atualizações consecutivas sem alteração no DOM
   let notificacao = null;
@@ -287,6 +288,8 @@
         transformados: Array.from(progresso.transformados).slice(-MAX_HISTORICO),
         bloqueados: Array.from(progresso.bloqueados).slice(-MAX_HISTORICO),
         alvo: alvo ? alvo.codigo : null,
+        intervaloAtivo: CONFIG.refreshInterval,
+        periodoMedido: periodoMedido,
         atualizadoEm: Date.now()
       };
       try { chrome.storage.local.set({ [CHAVE_PROGRESSO]: dados }); } catch (e) {}
@@ -316,13 +319,22 @@
     });
   }
 
+  const CHAVES_CONFIG = ['refreshInterval', 'validationTimeout', 'requireStatus'];
+
   function carregarConfig() {
     return new Promise((resolve) => {
-      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.sync) return resolve(CONFIG);
+      if (typeof chrome === 'undefined' || !chrome.storage) return resolve(CONFIG);
       try {
-        chrome.storage.sync.get(['refreshInterval', 'validationTimeout', 'requireStatus', 'isRunning'], (r) => {
-          aplicarConfig(r || {});
-          resolve(r || {});
+        // sync primeiro (reserva) e local por cima: local é a fonte da verdade
+        chrome.storage.sync.get(CHAVES_CONFIG.concat(['isRunning']), (rSync) => {
+          aplicarConfig(rSync || {});
+          if (!chrome.storage.local) return resolve(rSync || {});
+          chrome.storage.local.get(CHAVES_CONFIG, (rLocal) => {
+            aplicarConfig(rLocal || {});
+            log('Configuração carregada — intervalo de atualização: ' + CONFIG.refreshInterval +
+                ' ms | tempo limite de validação: ' + CONFIG.validationTimeout + ' ms');
+            resolve(Object.assign({}, rSync || {}, rLocal || {}));
+          });
         });
       } catch (e) { resolve({}); }
     });
@@ -848,8 +860,9 @@
       if (!rodando) return false;
 
       // o intervalo é medido entre INÍCIOS de atualização
-      ultimaAtualizacao = Date.now();
-      const inicio = ultimaAtualizacao;
+      const inicio = Date.now();
+      if (ultimaAtualizacao) periodoMedido = inicio - ultimaAtualizacao;
+      ultimaAtualizacao = inicio;
 
       const select = encontrarFiltroTipo();
       const opcaoSolta = select ? null : encontrarOpcaoMovelClicavel();
@@ -884,7 +897,9 @@
 
       log('Fila atualizada em ' + (Date.now() - inicio) + ' ms — mudança na grade: ' +
           (houveMudanca ? 'sim' : 'não detectada') +
-          ' | intervalo mínimo configurado: ' + CONFIG.refreshInterval + ' ms');
+          ' | intervalo configurado: ' + CONFIG.refreshInterval + ' ms' +
+          (periodoMedido != null ? ' | cadência medida: ' + periodoMedido + ' ms' : ''));
+      salvarProgresso(false);
       return true;
     } finally {
       atualizandoFila = false;
@@ -1594,7 +1609,9 @@
           break;
         case 'updateConfig':
           aplicarConfig(mensagem.config);
-          log('Configurações atualizadas — intervalo de atualização: ' + CONFIG.refreshInterval + ' ms');
+          log('Configurações atualizadas — intervalo de atualização: ' + CONFIG.refreshInterval +
+              ' ms | tempo limite de validação: ' + CONFIG.validationTimeout + ' ms');
+          salvarProgresso(true);
           break;
         case 'resetProgress':
           zerarProgresso();
@@ -1616,12 +1633,16 @@
 
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((mudancas, area) => {
-      if (area === 'sync') {
+      if (area === 'sync' || area === 'local') {
         const c = {};
-        ['refreshInterval', 'validationTimeout', 'requireStatus'].forEach((k) => {
-          if (mudancas[k]) c[k] = mudancas[k].newValue;
+        CHAVES_CONFIG.forEach((k) => {
+          if (mudancas[k] && mudancas[k].newValue != null) c[k] = mudancas[k].newValue;
         });
-        if (Object.keys(c).length) aplicarConfig(c);
+        if (Object.keys(c).length) {
+          aplicarConfig(c);
+          log('Configuração atualizada pelo painel — intervalo de atualização: ' + CONFIG.refreshInterval + ' ms');
+          salvarProgresso(false);
+        }
       }
       // o popup apagou o progresso: limpa também o que está em memória
       if (area === 'local' && mudancas[CHAVE_PROGRESSO] && mudancas[CHAVE_PROGRESSO].newValue === undefined) {

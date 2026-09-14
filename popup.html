@@ -25,12 +25,12 @@
       <h2>Configurações</h2>
       <div class="form-group">
         <label for="refresh-interval">Intervalo de atualização (ms):</label>
-        <input type="number" id="refresh-interval" value="1000" min="200" max="60000" step="100">
+        <input type="number" id="refresh-interval" value="1000" min="200" max="60000" step="1">
         <small class="hint">Intervalo mínimo entre atualizações da fila. Menor = mais rápido, maior = menos carga no Info2B.</small>
       </div>
       <div class="form-group">
         <label for="validation-timeout">Tempo limite de validação (ms):</label>
-        <input type="number" id="validation-timeout" value="8000" min="1000" max="60000" step="500">
+        <input type="number" id="validation-timeout" value="8000" min="1000" max="60000" step="1">
         <small class="hint">Espera máxima pelo status e pelos botões antes de abortar o pedido.</small>
       </div>
       <div class="form-group form-check">
@@ -46,6 +46,8 @@
     <div class="config progress">
       <h2>Progresso da fila</h2>
       <div class="linha"><span>Estado:</span><strong id="estado-atual">—</strong></div>
+      <div class="linha"><span>Intervalo em uso:</span><strong id="intervalo-ativo">—</strong></div>
+      <div class="linha"><span>Cadência medida:</span><strong id="cadencia-medida">—</strong></div>
       <div class="linha"><span>Último código:</span><strong id="ultimo-codigo">—</strong></div>
       <div class="linha"><span>Transformados:</span><strong id="total-transformados">0</strong></div>
       <div class="linha"><span>Bloqueados:</span><strong id="total-bloqueados">0</strong></div>
